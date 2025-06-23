@@ -1,16 +1,24 @@
+# Use slim Python 3.11 image
 FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy app code
+# Copy application code
 COPY . .
 
-# Install dependencies (includes 'standard' extras for reload support)
-RUN pip install --no-cache-dir fastapi uvicorn[standard] asyncpg
+# Install dependencies
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn[standard] \
+    asyncpg \
+    redis==4.6.0  # ✅ This includes redis.asyncio
 
-# Expose port
+# Make sure the startup script is executable
+RUN chmod +x start.sh
+
+# Expose FastAPI's port
 EXPOSE 8000
 
-# Run FastAPI with live reload enabled
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Start API and background worker
+CMD ["./start.sh"]

@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS search_logs (
   id SERIAL PRIMARY KEY,
-  user_id UUID,
+  user_id TEXT,
   session_id TEXT,
   keyword TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()

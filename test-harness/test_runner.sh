@@ -1,32 +1,73 @@
 #!/bin/bash
 
-API_URL="http://localhost:8082/log"
+PORT=${1:-8082}  # Pass 8081 for Go, 4000 for Elixir
+API_URL="http://localhost:$PORT/log"
 
-KEYWORDS=("ai" "crypto" "blockchain" "business" "cloud" "kubernetes" "golang" "python")
+DB_USER="search"
+DB_NAME="search_logs"
+DB_HOST="localhost"
+DB_TABLE="search_logs"
 
-echo "🔁 Sending 10 test search logs to $API_URL"
+# Simulated test cases: array of tuples (base_keyword, with_user_id)
+declare -a TEST_CASES=(
+  "business true"
+  "search false"
+  "marketing true"
+  "python false"
+)
 
-for i in {1..10}; do
-  keyword=${KEYWORDS[$RANDOM % ${#KEYWORDS[@]}]}
-  session_id=$(uuidgen)
-  user_id=$(uuidgen)
+flush_delay_secs=5
 
-  payload=$(cat <<EOF
+for TEST in "${TEST_CASES[@]}"; do
+  BASE_KEYWORD=$(echo "$TEST" | awk '{print $1}')
+  WITH_USER=$(echo "$TEST" | awk '{print $2}')
+  SESSION_ID=$(uuidgen)
+  USER_ID=$( [ "$WITH_USER" = "true" ] && uuidgen || echo "" )
+
+  echo
+  echo "🔁 Simulating keyword: '$BASE_KEYWORD'"
+  echo "🧪 session_id=$SESSION_ID"
+  if [ -n "$USER_ID" ]; then
+    echo "👤 user_id=$USER_ID"
+  else
+    echo "👤 anonymous session"
+  fi
+
+  for (( i=1; i<=${#BASE_KEYWORD}; i++ )); do
+    partial=${BASE_KEYWORD:0:$i}
+
+    payload=$(cat <<EOF
 {
-  "keyword": "$keyword",
-  "user_id": "$user_id",
-  "session_id": "$session_id"
+  "keyword": "$partial",
+  "session_id": "$SESSION_ID",
+  "user_id": "$USER_ID"
 }
 EOF
 )
 
-  echo "→ POST $keyword"
-  curl -s -X POST "$API_URL" \
-       -H "Content-Type: application/json" \
-       -d "$payload"
+    echo "→ Sending: $partial"
+    curl -s -X POST "$API_URL" \
+         -H "Content-Type: application/json" \
+         -d "$payload" > /dev/null
 
-  echo -e "\n---"
-  sleep 0.2
+    sleep 0.2
+  done
 done
 
-echo "✅ Done"
+echo
+echo "⏳ Waiting $flush_delay_secs seconds for Redis flush..."
+sleep $flush_delay_secs
+
+echo
+echo "🔍 Verifying results in Postgres:"
+for TEST in "${TEST_CASES[@]}"; do
+  BASE_KEYWORD=$(echo "$TEST" | awk '{print $1}')
+  SESSION_ID=$(PGPASSWORD=search psql -U $DB_USER -d $DB_NAME -h $DB_HOST -Atc \
+    "SELECT session_id FROM $DB_TABLE WHERE keyword = '$BASE_KEYWORD' ORDER BY created_at DESC LIMIT 1;")
+
+  if [ -n "$SESSION_ID" ]; then
+    echo "✅ '$BASE_KEYWORD' logged under session_id=$SESSION_ID"
+  else
+    echo "❌ '$BASE_KEYWORD' was not stored"
+  fi
+done

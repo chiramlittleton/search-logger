@@ -25,14 +25,16 @@ services:
 
   grafana:
     image: grafana/grafana
-    restart: always
     ports:
       - "3000:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
-      - grafana-storage:/var/lib/grafana
+      - ./grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - postgres
 
   go-logger:
     build:
@@ -54,12 +56,13 @@ services:
 
   elixir-logger:
     build:
-      context: ./elixir
-    ports:
-      - "8083:4000"
+      context: ./elixir_app
     depends_on:
       - postgres
-      - redis
+    environment:
+      DATABASE_URL: ecto://search:search@postgres/search_logs
+    ports:
+      - "4000:4000"
 
 volumes:
   pgdata:

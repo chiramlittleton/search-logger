@@ -1,15 +1,41 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from pydantic import BaseModel
-from logger import log_search
+from typing import Optional
+from logger import Logger
 
 app = FastAPI()
 
-class SearchPayload(BaseModel):
+# Logger instance with debounce configuration
+logger = Logger(
+    redis_url="redis://redis:6379/0",
+    db_config={
+        "user": "search",
+        "password": "search",
+        "database": "search_logs",
+        "host": "postgres",
+        "port": 5432,
+    },
+    debounce_seconds=5  # ⏱ Adjust this window to tune dedup behavior
+)
+
+@app.on_event("startup")
+async def startup():
+    await logger.init()
+
+@app.on_event("shutdown")
+async def shutdown():
+    await logger.close()
+
+class SearchLogRequest(BaseModel):
     keyword: str
-    user_id: str | None = None
     session_id: str
+    user_id: Optional[str] = None
 
 @app.post("/log")
-async def log_endpoint(payload: SearchPayload, request: Request):
-    await log_search(payload.keyword, payload.user_id, payload.session_id)
+async def handle_log_search(payload: SearchLogRequest):
+    await logger.log(
+        keyword=payload.keyword,
+        session_id=payload.session_id,
+        user_id=payload.user_id
+    )
     return {"status": "ok"}

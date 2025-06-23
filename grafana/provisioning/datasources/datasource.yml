@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    isDefault: true
+    editable: true
+    url: postgres:5432
+    database: search_logs
+    user: search
+    secureJsonData:
+      password: search
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1200
+      timeInterval: "1s"
