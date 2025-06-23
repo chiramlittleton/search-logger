@@ -1,6 +1,6 @@
 import redis.asyncio as aioredis
 import asyncpg
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 class Logger:
     def __init__(self, redis_url, db_config, debounce_seconds=5):
@@ -25,9 +25,12 @@ class Logger:
         # Only overwrite if this keyword is longer (more complete)
         if not current or len(keyword) > len(current):
             await self.redis.set(key, keyword, ex=10)
-            await self.redis.set(f"{key}:ts", datetime.utcnow().isoformat(), ex=10)
+            await self.redis.set(f"{key}:ts", datetime.now(timezone.utc).isoformat(), ex=10)
             if user_id:
                 await self.redis.set(f"{key}:user", user_id, ex=10)
+
+    async def acquire_pg_conn(self):
+        return await self.pg_pool.acquire()
 
     async def flush(self):
         """
@@ -35,7 +38,7 @@ class Logger:
         Called from a background task.
         Only flushes if a buffer time has passed since last update.
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         keys = await self.redis.keys("search:*")
         search_keys = [k for k in keys if not (k.endswith(":user") or k.endswith(":ts"))]
 
@@ -53,6 +56,8 @@ class Logger:
 
             try:
                 created_at = datetime.fromisoformat(created_at_str)
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
             except ValueError:
                 continue
 
@@ -60,7 +65,7 @@ class Logger:
             if now - created_at < self.debounce_buffer:
                 continue
 
-            async with self.pg_pool.acquire() as conn:
+            async with await self.acquire_pg_conn() as conn:
                 await conn.execute(
                     """
                     INSERT INTO search_logs (keyword, session_id, user_id, created_at)

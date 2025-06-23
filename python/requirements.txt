@@ -1,0 +1,4 @@
+redis>=4.2.0
+asyncpg
+pytest
+pytest-asyncio
