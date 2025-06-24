@@ -61,6 +61,12 @@ This ensures the logging logic is:
 
 ## Component Breakdown
 
+### Schema: `infra/postgres/init.sql`
+
+* Defines the `search_logs` table used for storing search activity.
+* Includes a composite index on `(keyword, created_at)` for efficient query performance.
+* Automatically runs as part of the Postgres container initialization.
+
 ### 1. `app.py` (FastAPI Server)
 
 * Exposes a `/log` endpoint that accepts `keyword`, `session_id`, and optional `user_id`.
