@@ -15,7 +15,7 @@ logger = Logger(
         "host": "postgres",
         "port": 5432,
     },
-    debounce_seconds=5  # ⏱ Adjust this window to tune dedup behavior
+    debounce_seconds=5  # Adjust this window to tune dedup behavior
 )
 
 @app.on_event("startup")
