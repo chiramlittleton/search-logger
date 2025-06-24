@@ -11,16 +11,17 @@ logger = Logger(
         "host": "postgres",
         "port": 5432,
     },
-    debounce_seconds=5  # Adjust this as needed
+    debounce_seconds=5  # Time buffer before allowing a search to be flushed
 )
 
 async def main():
     await logger.init()
 
     try:
+        # Run flush loop continuously
         while True:
             await logger.flush()
-            await asyncio.sleep(1)  # Check every second
+            await asyncio.sleep(1)  # Poll Redis once per second
     finally:
         await logger.close()
 

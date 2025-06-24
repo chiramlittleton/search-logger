@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PORT=${1:-8082}  # Pass 8081 for Go, 4000 for Elixir
+PORT=${1:-8082}
 API_URL="http://localhost:$PORT/log"
 
 DB_USER="search"
@@ -8,7 +8,7 @@ DB_NAME="search_logs"
 DB_HOST="localhost"
 DB_TABLE="search_logs"
 
-# Simulated test cases: array of tuples (base_keyword, with_user_id)
+# Array of simulated test cases: (keyword, uses_user_id)
 declare -a TEST_CASES=(
   "business true"
   "search false"
