@@ -12,7 +12,8 @@ RUN pip install --no-cache-dir \
     fastapi \
     uvicorn[standard] \
     asyncpg \
-    redis==4.6.0  # ✅ This includes redis.asyncio
+    redis==4.6.0 \
+    pytz
 
 # Make sure the startup script is executable
 RUN chmod +x start.sh

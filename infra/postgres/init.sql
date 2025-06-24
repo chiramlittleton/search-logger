@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS search_logs (
   user_id TEXT,
   session_id TEXT,
   keyword TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_keyword_time ON search_logs (keyword, created_at);
