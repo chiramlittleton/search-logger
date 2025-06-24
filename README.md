@@ -69,7 +69,7 @@ This ensures the logging logic is:
 ### 2. `logger.py`
 
 * Core class for debounced search logging.
-* Stores keyword, timestamp, and optional user\_id in Redis using the `session_id` as a key.
+* Stores keyword, timestamp, and optional `user_id` in Redis using the `session_id` as a key.
 * `flush()` reads all valid Redis entries, checks timestamp buffer, and inserts deduplicated data into Postgres.
 
 ### 3. `flush_worker.py`
@@ -93,9 +93,11 @@ This ensures the logging logic is:
 * Unit tests for the `Logger` class.
 * Covers deduplication logic, timestamp handling, and edge cases like missing or malformed Redis values.
 
-### 7. `start_test.sh`
+### 7. `test-harness/test_runner.sh`
 
-* Bash script for running integration-style tests.
+* Bash script for simulating keystroke-based search input.
+* Sends partial terms to the API and waits for flush confirmation.
+* Verifies that only the final (longest) version of each term is written to Postgres.
 * Simulates search sequences and verifies final inserts in Postgres.
 
 ---
@@ -115,5 +117,55 @@ Future improvements could include:
 * Support for batch inserts to reduce database overhead by writing multiple logs in a single SQL statement, improving performance at scale.
 * TTL tuning based on observed behavior
 * Monitoring flush stats for observability
+
+---
+
+## How to Run
+
+### Prerequisites
+
+* [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/install/) installed
+* [pyenv](https://github.com/pyenv/pyenv) installed for managing Python version (3.11+)
+
+### Run with Docker Compose
+
+Start the full application stack including FastAPI, Redis, and Postgres:
+
+```bash
+docker-compose up --build
+```
+
+This runs:
+
+* FastAPI on `localhost:8000`
+* Redis on the default port
+* Postgres with the `search_logs` database
+* `flush_worker.py` for periodic database writes
+
+### Run Tests Locally
+
+To run the unit tests without Docker:
+
+```bash
+pyenv install 3.11.6  # if needed
+pyenv local 3.11.6
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+pytest
+```
+
+### Run the Test Harness
+
+The test harness is located in the `test-harness/` directory. It simulates real-time user input by sending progressive search terms to the `/log` endpoint, then verifies what was flushed to Postgres after a debounce interval.
+
+```bash
+bash test-harness/test_runner.sh
+```
+
+Make sure Redis and Postgres are running (e.g., via `docker-compose up`) before executing the script. This test exercises the full logging and flush pipeline end-to-end.
+
+Make sure Redis and Postgres are running (e.g., via `docker-compose up`) before executing the script. This test exercises the full logging and flush pipeline end-to-end.
+
+This will simulate real search input and verify the expected behavior in Postgres.
 
 ---
